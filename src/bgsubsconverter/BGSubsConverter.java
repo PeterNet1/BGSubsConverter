@@ -168,43 +168,66 @@ public class BGSubsConverter extends javax.swing.JFrame {
         String line;
         StringBuilder sb;
         String[] stringArray;
+        String filepathFrom;
+        String filepathTo;
+        String[] specialCharacters = {"(", ")", "[", "]", " "};       
         Runtime runtime;
         String command;
+
+        filepathFrom = lblFilenameFrom.getText();
+        filepathTo = lblFilenameTo.getText();
         
-        if(lblFilenameFrom.getText().length() == 0 || lblFilenameTo.getText().length() == 0)
+        if(filepathFrom.length() == 0 || filepathTo.length() == 0)
             return;
         
         runtime = Runtime.getRuntime();
         sb = new StringBuilder();
         
-        try {
-                p = runtime.exec(String.format("file -bi %s", lblFilenameFrom.getText()));
-                p.waitFor();
-                    
-                reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                line = "";
-                while ((line = reader.readLine())!= null) {
-                    sb.append(line);
-                }
-                stringArray = sb.toString().split(" ");
+        for(String character : specialCharacters)
+        {
+            if(filepathFrom.contains(character))
+            {
+                filepathFrom = filepathFrom.replace(character, String.format("\\%s", character));
+            }
 
-                if(stringArray[1].matches("charset=iso-8859-1"))
-                {   
-                    command = String.format("iconv -f WINDOWS-1251 -t UTF-8 %s > %s", lblFilenameFrom.getText(), lblFilenameTo.getText());
-                    runtime.exec(new String[]{"sh", "-c", command.replace("(", "\\(").replace(")", "\\)")});  
-                }else
-                    JOptionPane.showMessageDialog(this, String.format("Файла за четене има друго кодиране:\n%s", stringArray[1]));
-            } catch (IOException ex) {
+            if(filepathTo.contains(character))
+            {
+                filepathTo = filepathTo.replace(character, String.format("\\%s", character));
+            }
+        }
+
+        try 
+        {
+            p = runtime.exec(new String[]{"sh", "-c", String.format("file -bi %s", filepathFrom)});
+            p.waitFor();
+
+            reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            line = "";
+            while ((line = reader.readLine())!= null)
+                sb.append(line);
+            
+            stringArray = sb.toString().split(" ");
+
+            if(stringArray[1].matches("charset=iso-8859-1"))
+            {   
+                command = String.format("iconv -f WINDOWS-1251 -t UTF-8 %s > %s", filepathFrom, filepathTo);
+                runtime.exec(new String[]{"sh", "-c", command});  
+            }else
+                JOptionPane.showMessageDialog(this, String.format("Файла за четене има друго кодиране:\n%s", stringArray[1]));
+            } catch (IOException ex) 
+            {
                 String errorMessage = ex.getMessage();
                 JOptionPane.showMessageDialog(this, errorMessage);
                 System.err.println(errorMessage);
                 ex.printStackTrace();
-            } catch (InterruptedException ex) {
+            } catch (InterruptedException ex) 
+            {
                 String errorMessage = ex.getMessage();
                 JOptionPane.showMessageDialog(this, errorMessage);
                 System.err.println(errorMessage);
                 ex.printStackTrace();
             }
+
         lblFilenameFrom.setText("");
         lblFilenameTo.setText("");
     }//GEN-LAST:event_btnConvertActionPerformed
